@@ -459,7 +459,7 @@ function aplicarRolDetalle() {
 
 function irADetalle(d) {
   obraActual = d;
-  const avFin = d.pim_ano_vigente > 0 ? (d.dev_ano_vigente/d.pim_ano_vigente*100) : 0;
+  const avFin = d._pim > 0 ? (d._dev/d._pim*100) : 0;
   const nAlertas = d._alerta === 'verde' ? 0 : d._alerta === 'amarillo' ? 1 : 2;
 
   document.getElementById('det-cui').textContent = 'CUI ' + d.codigo_unico + ' · ' + (d.entidad||'MPT');
@@ -471,8 +471,8 @@ function irADetalle(d) {
   document.getElementById('det-viable').textContent = fmt(d.mto_viable);
   document.getElementById('det-avfis').textContent = (d._avFis||0).toFixed(1) + '%';
   document.getElementById('det-avfin').textContent = avFin.toFixed(1) + '%';
-  document.getElementById('det-pim').textContent = fmt(d.pim_ano_vigente);
-  document.getElementById('det-dev').textContent = fmt(d.dev_ano_vigente);
+  document.getElementById('det-pim').textContent = fmt(d._pim);
+  document.getElementById('det-dev').textContent = fmt(d._dev);
   document.getElementById('det-alertas').textContent = nAlertas;
   document.getElementById('cont-nombre').textContent = d.des_unidad_uei || 'No registrado';
   document.getElementById('cont-modal').textContent = d.modalidad_ejecucion || '—';
@@ -527,12 +527,12 @@ function renderTabla() {
     const dotCls = d._alerta==='rojo'?'dot-red':d._alerta==='amarillo'?'dot-amber':'dot-green';
     const estCls = d._alerta==='rojo'?'estado-red':d._alerta==='amarillo'?'estado-amber':'estado-green';
     const estLabel = d._alerta==='rojo'?'Riesgo alto':d._alerta==='amarillo'?'Riesgo medio':'Sin alerta';
-    const nombre = (d.nombre_inversion||'—');
+    const nombre = (d.nombre_inversion || 'CUI ' + d.codigo_unico);
     const corto = nombre.length>65 ? nombre.substring(0,65)+'...' : nombre;
     return `<tr>
       <td><div class="obra-name">${corto}</div><div class="obra-entidad">${d.entidad||'MPT'} · ${d.modalidad_ejecucion||'—'}</div></td>
       <td style="color:#666">${d.codigo_unico}</td>
-      <td>${fmt(d.pim_ano_vigente)}</td>
+      <td>${fmt(d._pim)}</td>
       <td>${renderBar(avFis, d._alerta)}</td>
       <td>${renderBar(avFin, d._alerta)}</td>
       <td>${alertas}</td>
@@ -556,16 +556,19 @@ async function loadData() {
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
     });
     const data = await res.json();
-    allData = data.filter(d => (d.pim_ano_vigente || 0) > 0).map(d => {
+    allData = data.filter(d => d.codigo_unico).map(d => {
+      const pim = d.pim_ano_vigente || 0;
+      const dev = d.dev_ano_vigente || 0;
+      const ref = d.costo_actualizado || d.mto_viable || 0;
       const avFis = d.porc_avance_fis ?? d.avance_fisico ?? 0;
-      const avFin = d.pim_ano_vigente>0 ? (d.dev_ano_vigente/d.pim_ano_vigente*100) : 0;
-      return { ...d, _avFis: avFis, _alerta: getAlerta(avFis, avFin) };
+      const avFin = pim > 0 ? (dev / pim * 100) : 0;
+      return { ...d, _pim: pim, _ref: ref, _dev: dev, _avFis: avFis, _alerta: getAlerta(avFis, avFin) };
     });
     const rojas = allData.filter(d => d._alerta==='rojo').length;
     const amarillas = allData.filter(d => d._alerta==='amarillo').length;
     const verdes = allData.filter(d => d._alerta==='verde').length;
-    const pim = allData.reduce((s,d) => s+(d.pim_ano_vigente||0), 0);
-    const dev = allData.reduce((s,d) => s+(d.dev_ano_vigente||0), 0);
+    const pim = allData.reduce((s,d) => s+(d._pim||0), 0);
+    const dev = allData.reduce((s,d) => s+(d._dev||0), 0);
     const pct = pim>0 ? (dev/pim*100).toFixed(1) : 0;
     document.getElementById('kpi-total').textContent = allData.length;
     document.getElementById('kpi-pim').textContent = fmt(pim);
