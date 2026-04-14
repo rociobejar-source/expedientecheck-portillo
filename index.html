@@ -833,10 +833,11 @@ function renderTabla() {
 btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id);
       
-      if (rolActivo === 'publico') {
-        window.location.href = 'login.html?redirect=index.html';
-        return;
-      }
+if (rolActivo === 'publico') {
+  localStorage.setItem('obraAAbrir', id);
+  window.location.href = 'login.html';
+  return;
+}
       
       abrirModal(obras.find(o=>o.id===id));
     });
