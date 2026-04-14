@@ -649,9 +649,13 @@ document.getElementById('fecha-hoy').textContent =
   new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
 
 // ── UTILS ────────────────────────────────────────────────────
-const fmtM  = v => v != null && v > 0
-  ? 'S/ ' + (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v.toFixed(0))
-  : '—';
+const fmtM  = v => {
+  const n = Number(v);
+  if (!v || isNaN(n) || n <= 0) return '—';
+  if (n >= 1e6) return 'S/ ' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return 'S/ ' + (n/1e3).toFixed(0) + 'K';
+  return 'S/ ' + n.toFixed(0);
+};
 const fmtPct = v => v != null ? Number(v).toFixed(1)+'%' : '—';
 const fmtFecha = iso => iso
   ? new Date(iso).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'})
@@ -757,11 +761,8 @@ function renderTabla() {
     return;
   }
 
-  // Ordenar: rojo primero
-  filtradas = [...filtradas].sort((a,b) => {
-    const ord = {rojo:0,amarillo:1,verde:2};
-    return (ord[a.alerta]??2) - (ord[b.alerta]??2);
-  });
+  // Ordenar: por PIM 2026 descendente
+  filtradas = [...filtradas].sort((a,b) => (b.pim_2026||0) - (a.pim_2026||0));
 
   const puedeEditar = rolActivo !== 'publico';
 
@@ -770,6 +771,7 @@ function renderTabla() {
     const fis      = o.avance_fisico     != null ? Number(o.avance_fisico)     : null;
     const fin      = o.avance_financiero != null ? Number(o.avance_financiero) : null;
     const avPct    = o.avance_2026_pct   != null ? Number(o.avance_2026_pct)   : null;
+    const costo    = o.costo_proyecto    != null ? Number(o.costo_proyecto)    : null;
     const brecha   = (fis!=null&&fin!=null) ? (fin-fis).toFixed(1) : null;
 
     const badgeAlerta = alerta==='rojo'
@@ -830,15 +832,7 @@ function renderTabla() {
   tbody.querySelectorAll('.btn-detalle').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id);
-      const obra = obras.find(o=>o.id===id);
-      
-      // ← CAMBIO MÍNIMO: Si es público, pedir login
-      if (rolActivo === 'publico') {
-        window.location.href = 'login.html?redirect=index.html';
-        return;
-      }
-      
-      abrirModal(obra);
+      abrirModal(obras.find(o=>o.id===id));
     });
   });
 }
@@ -851,7 +845,7 @@ function abrirModal(obra) {
   document.getElementById('modal-title').textContent    = obra.nombre || 'Sin nombre';
   document.getElementById('modal-meta').textContent     = `CUI ${obra.cui} · ${obra.contratista || 'Sin contratista registrado'}`;
   document.getElementById('d-cui').textContent          = obra.cui;
-  document.getElementById('d-costo').textContent        = fmtM(obra.costo_proyecto);
+  document.getElementById('d-costo').textContent        = obra.costo_proyecto ? 'S/ ' + Number(obra.costo_proyecto).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
   document.getElementById('d-fisico').textContent       = fmtPct(obra.avance_fisico);
   document.getElementById('d-financiero').textContent   = fmtPct(obra.avance_financiero);
   document.getElementById('d-pim').textContent          = fmtM(obra.pim_2026);
