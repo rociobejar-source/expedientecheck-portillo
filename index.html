@@ -925,8 +925,15 @@ document.getElementById('btn-save').addEventListener('click', async () => {
 });
 
 // ── INICIO ───────────────────────────────────────────────────
-cargarObras();
-setInterval(cargarObras, 5 * 60 * 1000);
+// Verificar si hay obra para abrir después del login
+if (localStorage.getItem('obraAAbrir')) {
+  const obraId = parseInt(localStorage.getItem('obraAAbrir'));
+  localStorage.removeItem('obraAAbrir');
+  setTimeout(() => {
+    const obra = obras.find(o => o.id === obraId);
+    if (obra) abrirModal(obra);
+  }, 500);
+}
 </script>
 </body>
 </html>
